@@ -1,0 +1,52 @@
+version: '3.3'
+services:
+    nginx:
+        build:
+            context: ./nginx
+            args:
+                - WEB_REVERSE_PROXY_PORT=8000
+                - WEB_SSL=false
+                - SELF_SIGNED=false
+                - NO_DEFAULT=false
+        volumes:
+            - ./project/data/logs/nginx/:/var/log/nginx
+            - ./nginx/certs/:/var/certs
+        ports:
+            - "80:80"
+            - "443:443"
+        tty: true
+    node:
+        build:
+            context: ./node
+            args:
+                - NODE_VERSION=latest
+                - PROJECT_PATH=/opt/app/
+                - NODE_ENV=production
+                - YARN=false
+        volumes:
+            - ./project/src/node/:/opt/app
+        entrypoint: run-nodock "node index.js"
+        depends_on:
+            - mysql
+            - nginx
+        tty: true
+    mysql:
+        build:
+            context: ./mysql
+            args:
+                - MYSQL_DATABASE=tcc_help
+                - MYSQL_USER=banana
+                - MYSQL_PASSWORD=banana
+                - MYSQL_ROOT_PASSWORD=root
+        volumes:
+            - ./project/data/mysql/:/var/lib/mysql
+        expose:
+            - "3306"
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        ports:
+            - 8080:80
+        depends_on:
+            - mysql
+        environment:
+            PMA_HOST: mysql
